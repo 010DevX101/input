@@ -1,0 +1,6 @@
+---
+name: string_require
+globals:
+  require:
+    args:
+      - type: string
