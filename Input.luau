@@ -1,6 +1,5 @@
 --!strict
 type Context = {
-	Name: string,
 	Enabled: boolean,
 	Priority: number,
 	Sink: boolean,
@@ -10,15 +9,14 @@ type Context = {
 type Action = {
 	Enabled: boolean,
 	Type: Enum.InputActionType,
-	KeyboardBinding: Binding?,
-	TouchBinding: Binding?,
-	GamepadBinding: Binding?,
+	Bindings: {[BindingType]: Binding?},
 	StateChanged: (value: any) -> (),
 	Pressed: (() -> ())?,
 	Released: (() -> ())?
 }
 
 type Binding = {
+	Type: BindingType,
 	KeyCode: Enum.KeyCode?,
 	UIButton: GuiButton?,
 	Scale: number?,
@@ -33,6 +31,21 @@ type Binding = {
 	ReleasedThreshold: number?,
 	ResponseCurve: number?
 }
+
+type BindingType = |
+	"Keyboard" |
+	"Gamepad" |
+	"Touch"
+
+export type ContextFn =
+	((name: string) -> InputContext)
+	& ((name: string, data: Context?) -> InputContext?)
+export type ActionFn =
+	((action: string, context: InputContext, data: Action) -> (InputAction))
+	& ((action: string, context: string) -> (InputAction?))
+export type BindingFn =
+	((type: BindingType, action: InputAction, data: Binding) -> (InputBinding))
+	& ((type: BindingType, action: string, context: string) -> (InputBinding?))
 
 local INPUT_DIRECTORY = script
 local KEY_CODES_WITH_THRESHOLD = {
@@ -49,8 +62,10 @@ local KEY_CODES_WITH_THRESHOLD = {
 }
 local KEY_CODES_WITH_RESPONSE_CURVE = {
 	Enum.KeyCode.Thumbstick1,
-	Enum.KeyCode.Thumbstick2Up
+	Enum.KeyCode.Thumbstick2
 }
+
+local contextList: {[string]: InputContext} = {}
 
 local function applyThreshold(
 	binding: InputBinding,
@@ -84,12 +99,61 @@ local function applyResponseCurve(
 	end
 end
 
-function createBinding(
-	data: Binding,
-	action: InputAction
+local function getContext(
+	name: string
+): InputContext?
+	local context = contextList[name]
+	if not context then
+		warn(`Could not retrieve context with name {name}!`)
+		return nil
+	end
+	return context
+end
+
+local function getAction(
+	actionName: string,
+	contextName: string
+): InputAction?
+	local context = contextList[contextName]
+	print(context)
+	if not context then
+		warn(`Could not retrieve action from context of name {contextName}!`)
+		return nil
+	end
+	local action = context:FindFirstChild(actionName)
+	print(action)
+	if not action or not action:IsA("InputAction") then
+		warn(`Could not retrieve action with name {actionName} in context {contextName}!`)
+		return nil
+	end
+	return action
+end
+
+local function getBinding(
+	type: BindingType,
+	contextName: string,
+	actionName: string
+): InputBinding?
+	local action = getAction(actionName, contextName)
+	if not action then
+		return nil
+	end
+	local binding = action:FindFirstChild(type)
+	if not binding or not binding:IsA("InputBinding") then
+		warn(`Could not retrieve binding of type {type} in action {actionName}!`)
+		return nil
+	end
+	return binding
+end
+
+local function createBinding(
+	type: BindingType,
+	action: InputAction,
+	data: Binding
 ): InputBinding
 	local binding = Instance.new("InputBinding")
-	if data.KeyCode and binding.KeyCode then
+	binding.Name = type
+	if data.KeyCode then
 		binding.KeyCode = data.KeyCode
 		applyThreshold(binding, data.PressedThreshold, data.ReleasedThreshold, data.KeyCode)
 		applyResponseCurve(binding, data.ResponseCurve, data.KeyCode)
@@ -125,13 +189,13 @@ function createBinding(
 	return binding
 end
 
-function createAction(
-	name: string,
-	data: Action,
-	context: InputContext
+local function createAction(
+	actionName: string,
+	context: InputContext,
+	data: Action
 ): InputAction
 	local action = Instance.new("InputAction")
-	action.Name = name
+	action.Name = actionName
 	action.Enabled = data.Enabled
 	action.Type = data.Type
 	if data.Pressed then
@@ -142,32 +206,58 @@ function createAction(
 	end
 	action.StateChanged:Connect(data.StateChanged)
 	action.Parent = context
-	for _, binding in { data.KeyboardBinding, data.GamepadBinding, data.TouchBinding } do
+	for type: BindingType, binding: Binding? in data.Bindings do
 		if not binding then
 			continue
 		end
-		createBinding(binding, action)
+		createBinding(type, action, binding)
 	end
 	return action
 end
 
-function createContext(
+local function createContext(
+	name: string,
 	data: Context
 ): InputContext
 	local context = Instance.new("InputContext")
-	context.Name = data.Name
+	context.Name = name
 	context.Enabled = data.Enabled
 	context.Sink = data.Sink
 	context.Priority = data.Priority
 	context.Parent = INPUT_DIRECTORY
-	for name, actionData in data.Actions do
-		createAction(name, actionData, context)
+	contextList[name] = context
+	for actionName, actionData in data.Actions do
+		createAction(actionName, context, actionData)
 	end
 	return context
 end
 
 return {
-	createContext = createContext,
-	createAction = createAction,
-	createBinding = createBinding
+	context = function(
+		name: string,
+		data: Context?
+	): InputContext?
+		return data and createContext(name, data) or getContext(name)
+	end :: ContextFn,
+	action = function(
+		name: string,
+		context: any,
+		data: any
+	): InputAction?
+		if typeof(context) == "string" then
+			return getAction(name, context)
+		end
+		return data and createAction(name, context, data)
+	end :: ActionFn,
+	binding = function(
+		type: BindingType,
+		action: InputAction | string,
+		context: string,
+		data: Binding?
+	): InputBinding?
+		if typeof(action) == "string" then
+			return context and getBinding(type, context, action)
+		end
+		return data and createBinding(type, action, data)
+	end :: BindingFn
 }
