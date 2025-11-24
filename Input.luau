@@ -1,12 +1,12 @@
 --!strict
-type Context = {
+export type Context = {
 	Enabled: boolean,
 	Priority: number,
 	Sink: boolean,
 	Actions: {[string]: Action}
 }
 
-type Action = {
+export type Action = {
 	Enabled: boolean,
 	Type: Enum.InputActionType,
 	Bindings: {[BindingType]: Binding?},
@@ -15,7 +15,7 @@ type Action = {
 	Released: (() -> ())?
 }
 
-type Binding = {
+export type Binding = {
 	Type: BindingType,
 	KeyCode: Enum.KeyCode?,
 	UIButton: GuiButton?,
@@ -32,7 +32,7 @@ type Binding = {
 	ResponseCurve: number?
 }
 
-type BindingType = |
+export type BindingType = |
 	"Keyboard" |
 	"Gamepad" |
 	"Touch"

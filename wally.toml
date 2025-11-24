@@ -1,13 +1,14 @@
 [package]
 name = "010devx101/input"
-version = "0.1.0"
+version = "0.2.1"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 license = "MIT"
 include = [
-	"Input.luau",
+	"input.luau",
 	"wally.toml",
 	"README.md",
 	"default.project.json",
 	"LICENSE"
 ]
+exclude = ["**"]

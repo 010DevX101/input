@@ -1,11 +1,6 @@
 {
   "name": "input",
   "tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Input": {
-				"$path": "Input.luau"
-			}
-		}
+		"$path": "input.luau"
   }
 }
