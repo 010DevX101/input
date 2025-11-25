@@ -115,13 +115,11 @@ local function getAction(
 	contextName: string
 ): InputAction?
 	local context = contextList[contextName]
-	print(context)
 	if not context then
 		warn(`Could not retrieve action from context of name {contextName}!`)
 		return nil
 	end
 	local action = context:FindFirstChild(actionName)
-	print(action)
 	if not action or not action:IsA("InputAction") then
 		warn(`Could not retrieve action with name {actionName} in context {contextName}!`)
 		return nil
