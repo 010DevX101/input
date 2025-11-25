@@ -1,16 +1,16 @@
 --!strict
 export type Context = {
-	Enabled: boolean,
-	Priority: number,
-	Sink: boolean,
-	Actions: {[string]: Action}
+	Enabled: boolean?,
+	Priority: number?,
+	Sink: boolean?,
+	Actions: {[string]: Action}?
 }
 
 export type Action = {
-	Enabled: boolean,
+	Enabled: boolean?,
 	Type: Enum.InputActionType,
-	Bindings: {[BindingType]: Binding?},
-	StateChanged: (value: any) -> (),
+	Bindings: {[BindingType]: Binding}?,
+	StateChanged: ((value: any) -> ())?,
 	Pressed: (() -> ())?,
 	Released: (() -> ())?
 }
@@ -48,6 +48,15 @@ export type BindingFn =
 	& ((type: BindingType, action: string, context: string) -> (InputBinding?))
 
 local INPUT_DIRECTORY = script
+local DEFAULT_CONTEXT = {
+	Enabled = true,
+	Priority = 1000,
+	Sink = false
+}
+local DEFAULT_ACTION = {
+	Enabled = true
+}
+
 local KEY_CODES_WITH_THRESHOLD = {
 	Enum.KeyCode.ButtonL2,
 	Enum.KeyCode.ButtonR2,
@@ -194,7 +203,7 @@ local function createAction(
 ): InputAction
 	local action = Instance.new("InputAction")
 	action.Name = actionName
-	action.Enabled = data.Enabled
+	action.Enabled = data.Enabled or DEFAULT_ACTION.Enabled
 	action.Type = data.Type
 	if data.Pressed then
 		action.Pressed:Connect(data.Pressed)
@@ -202,13 +211,17 @@ local function createAction(
 	if data.Released then
 		action.Released:Connect(data.Released)
 	end
-	action.StateChanged:Connect(data.StateChanged)
+	if data.StateChanged then
+		action.StateChanged:Connect(data.StateChanged)
+	end
 	action.Parent = context
-	for type: BindingType, binding: Binding? in data.Bindings do
-		if not binding then
-			continue
+	if data.Bindings then
+		for type: BindingType, binding: Binding? in data.Bindings do
+			if not binding then
+				continue
+			end
+			createBinding(type, action, binding)
 		end
-		createBinding(type, action, binding)
 	end
 	return action
 end
@@ -219,13 +232,15 @@ local function createContext(
 ): InputContext
 	local context = Instance.new("InputContext")
 	context.Name = name
-	context.Enabled = data.Enabled
-	context.Sink = data.Sink
-	context.Priority = data.Priority
+	context.Enabled = data.Enabled or DEFAULT_CONTEXT.Enabled
+	context.Sink = data.Sink or DEFAULT_CONTEXT.Sink
+	context.Priority = data.Priority or DEFAULT_CONTEXT.Priority
 	context.Parent = INPUT_DIRECTORY
 	contextList[name] = context
-	for actionName, actionData in data.Actions do
-		createAction(actionName, context, actionData)
+	if data.Actions then
+		for actionName, actionData in data.Actions do
+			createAction(actionName, context, actionData)
+		end
 	end
 	return context
 end
