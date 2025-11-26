@@ -38,14 +38,14 @@ export type BindingType = |
 	"Touch"
 
 export type ContextFn =
-	((name: string) -> InputContext)
-	& ((name: string, data: Context?) -> InputContext?)
+	((name: string) -> (InputContext?))
+	& ((name: string, data: Context) -> (InputContext))
 export type ActionFn =
-	((action: string, context: InputContext, data: Action) -> (InputAction))
-	& ((action: string, context: string) -> (InputAction?))
+	((action: string, context: string) -> (InputAction?))
+	& ((action: string, context: InputContext, data: Action) -> (InputAction))
 export type BindingFn =
-	((type: BindingType, action: InputAction, data: Binding) -> (InputBinding))
-	& ((type: BindingType, action: string, context: string) -> (InputBinding?))
+	((type: BindingType, action: string, context: string) -> (InputBinding?))
+	& ((type: BindingType, action: InputAction, data: Binding) -> (InputBinding))
 
 local INPUT_DIRECTORY = script
 local DEFAULT_CONTEXT = {
